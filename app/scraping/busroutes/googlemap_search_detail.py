@@ -1,3 +1,5 @@
+# REF Python seleniumの基本 https://torina.top/detail/264/
+
 import re
 import sys
 import pandas as pd
@@ -15,10 +17,10 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 ################################################################################
 
 df_from_to = pd.read_csv("data/bus_routes/from_to_all.csv")
-df_from_to = df_from_to[103:104]
+df_from_to = df_from_to[6:15]
 
 # define empty dataframe
-returned_dataset = pd.DataFrame(columns=['ObjectID', "バスルート1"], index=[])
+returned_dataset = pd.DataFrame(columns=['ObjectID', "START", "END", "DEPARTURE", "Route1", "Route2", "Route3"], index=[])
 
 count = 1
 for from_to_list in df_from_to.iterrows():
@@ -30,12 +32,13 @@ for from_to_list in df_from_to.iterrows():
     START_TIME = data.出発時間
 
     SEARCH = START_POINT + " から " + END_POINT + " まで "
-    FILENAME = "output/bus_routes_ss/" + START_POINT + "_" + END_POINT + "_" + START_TIME + "_FORNOW.png"
+    # FILENAME = "output/bus_routes_ss/" + START_POINT + "_" + END_POINT + "_" + START_TIME.replace("/","_") + ".png"
+    FILENAME = "output/bus_routes_detail_ss/" + START_POINT + "_" + END_POINT + "_" + START_TIME.replace("/","_") + ".png"
     TIMEOUT = 5
 
     driver = None
 
-    print(count , ":  Checking now ... 【出発点:" + START_POINT, "】 【降車点:" + END_POINT, "】 【出発時間:" + START_TIME + "】---------------")
+    print(count , ": Checking now ... 【出発点:" + START_POINT, "】 【降車点:" + END_POINT, "】 【出発時間:" + START_TIME + "】---------------")
 
     try:
         ############################################################################
@@ -74,8 +77,6 @@ for from_to_list in df_from_to.iterrows():
             for sel in select:
                 if sel.text != "出発時刻":
                     sel.click()
-                    # print("出発時刻 is clicked.")
-            # select by visible text
 
             # 出発時刻を選択する箇所を取得
             start_time_input = driver.find_element_by_xpath('//*[@id="pane"]/div/div[1]/div/div/div[2]/div[1]/span[1]/input')
@@ -95,52 +96,65 @@ for from_to_list in df_from_to.iterrows():
             except TimeoutException:
                 pass
 
+            # オプションを選択からバスにチェックを入れる ---------
+            driver.find_element_by_class_name('section-directions-options-link').click()
 
-            # 詳細をクリックする
-            driver.find_element_by_xpath('//*[@id="section-directions-trip-0"]/div[2]/div[2]/div[4]/button').click()
+            bus = driver.find_element_by_xpath('//*[@id="pane"]/div/div[1]/div/div/div[2]/div[2]/div/div[3]/div[1]/div[1]/label')
+            print(bus.text)
+            bus.click()
 
-            # リストが出てくるまで待機する
-            element = WebDriverWait(driver,10).until(
+            try:
+                # リストが出てくるまで待機する
+                element = WebDriverWait(driver,10).until(
                     # 遷移先で指定した要素がでてくるか確認
-                    EC.presence_of_element_located((By.CLASS_NAME, 'section-trip-details'))
+                    # EC.presence_of_element_located((By.CLASS_NAME, 'section-directions-options-route-options-header'))
+                    EC.presence_of_element_located((By.CLASS_NAME, 'section-directions-trip-title'))
                 )
-            print("list is shown---------------------------------------！")
-            # 検索ルートの一つ目
-            # list1 = driver.find_element_by_css_selector('section-directions-trip-0]')
-            # list1 = driver.find_element_by_class_name('section-directions-trip-description')
-            list1 = driver.find_element_by_xpath('//*[@id="pane"]/div/div[1]/div/div/div[5]')
+                print("waited.")
+            except TimeoutException:
+                print("Can not wait!!")
+                pass
 
-            routes_1 = list1.text
 
-            print("Routes is found ... " + list1.text)
-            # for ls in list1:
-            #     print("iterating..")
-            #     routes_1 = ls.text
-            #     print("Routes is found ... " + routes_1[0:50])
+            # 検索ルートを取得してリストに加える
+            list_route = driver.find_elements_by_class_name('section-directions-trip-description')
+
+            route_list = []
+            for ls in list_route:
+                route_list.append(ls.text.replace("\n", " "))
+                print("Routes is found ... ")
+
             # get screen shot
             driver.save_screenshot(FILENAME)
-            print("Bus route is found. screenshot is saved.")
-
+            print("Bus route is found.\nscreenshot is saved.")
+        #
         except NoSuchElementException:
             driver.save_screenshot(FILENAME)
-            print("Screenshot is saved.")
-            print("There are no bus route.")
-            # ルートがないので空白を代入
-            routes_1 = ""
+            print("Screenshot is saved.\n")
+            # print("There are no bus route.")
 
-            pass
+            # ルートのリスト空白を代入
+            route_list.append("")
+            route_list.append("")
+            route_list.append("")
 
-        new_contents = pd.Series([data.ObjectID, routes_1],
+        print("adjusting list size")
+        if len(route_list) <= 3:
+            while len(route_list) != 3:
+                route_list.append("")
+        new_contents = pd.Series([data.ObjectID, START_POINT, END_POINT, START_TIME, route_list[0], route_list[1], route_list[2]],
                                  index=returned_dataset.columns,
                                  name = None)
 
-        returned_dataset = returned_dataset.append(new_contents, ignore_index=True)
 
+        returned_dataset = returned_dataset.append(new_contents, ignore_index=True)
+        print("data is appended.")
         count += 1
 
     finally:
-        returned_dataset.to_csv("output/bus_routes.csv")
-        ############################################################################
+        # returned_dataset.to_csv("output/bus_routes.csv")
+        returned_dataset.to_excel("output/bus_routes_detail.xlsx")
+
         # quit
         if driver is not None:
             driver.quit()

@@ -76,8 +76,6 @@ for from_to_list in df_from_to.iterrows():
             for sel in select:
                 if sel.text != "出発時刻":
                     sel.click()
-                    # print("出発時刻 is clicked.")
-            # select by visible text
 
             # 出発時刻を選択する箇所を取得
             start_time_input = driver.find_element_by_xpath('//*[@id="pane"]/div/div[1]/div/div/div[2]/div[1]/span[1]/input')
@@ -97,17 +95,13 @@ for from_to_list in df_from_to.iterrows():
             except TimeoutException:
                 pass
 
-            # 検索ルートの一つ目
-            # list1 = driver.find_element_by_css_selector('section-directions-trip-0]')
+            # 検索ルートを取得してリストに加える
             list_route = driver.find_elements_by_class_name('section-directions-trip-description')
-
-            # routes_1 = list1.text
-            # print("Routes is found ... " + list1.text)
 
             route_list = []
             for ls in list_route:
                 route_list.append(ls.text.replace("\n", " "))
-                print("Routes is found ... " + ls.text[0:50])
+                print("Routes is found ... ")
 
             # get screen shot
             driver.save_screenshot(FILENAME)
@@ -137,9 +131,9 @@ for from_to_list in df_from_to.iterrows():
         count += 1
 
     finally:
-        returned_dataset.to_csv("output/bus_routes.csv")
+        # returned_dataset.to_csv("output/bus_routes.csv")
         returned_dataset.to_excel("output/bus_routes.xlsx")
-        ############################################################################
+
         # quit
         if driver is not None:
             driver.quit()
