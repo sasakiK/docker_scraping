@@ -17,10 +17,10 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 ################################################################################
 
 df_from_to = pd.read_csv("data/bus_routes/from_to_all.csv")
-df_from_to = df_from_to[6:15]
+df_from_to = df_from_to[160:164]
 
 # define empty dataframe
-returned_dataset = pd.DataFrame(columns=['ObjectID', "START", "END", "DEPARTURE", "Route1", "Route2", "Route3"], index=[])
+returned_dataset = pd.DataFrame(columns=['ObjectID', "START", "END", "DEPARTURE", "Route1_detail" ,"Route1", "Route2", "Route3"], index=[])
 
 count = 1
 for from_to_list in df_from_to.iterrows():
@@ -33,7 +33,7 @@ for from_to_list in df_from_to.iterrows():
 
     SEARCH = START_POINT + " から " + END_POINT + " まで "
     # FILENAME = "output/bus_routes_ss/" + START_POINT + "_" + END_POINT + "_" + START_TIME.replace("/","_") + ".png"
-    FILENAME = "output/bus_routes_detail_ss/" + START_POINT + "_" + END_POINT + "_" + START_TIME.replace("/","_") + ".png"
+    FILENAME = "output/bus_routes_detail_ss/" + START_POINT + "_" + END_POINT + "_" + START_TIME.replace(":","_") + ".png"
     TIMEOUT = 5
 
     driver = None
@@ -96,41 +96,45 @@ for from_to_list in df_from_to.iterrows():
             except TimeoutException:
                 pass
 
-            # オプションを選択からバスにチェックを入れる ---------
+            # オプションを選択からバスにチェックを入れる ------------------------------------------------
             driver.find_element_by_class_name('section-directions-options-link').click()
 
             bus = driver.find_element_by_xpath('//*[@id="pane"]/div/div[1]/div/div/div[2]/div[2]/div/div[3]/div[1]/div[1]/label')
-            print(bus.text)
             bus.click()
 
             try:
                 # リストが出てくるまで待機する
                 element = WebDriverWait(driver,10).until(
                     # 遷移先で指定した要素がでてくるか確認
-                    # EC.presence_of_element_located((By.CLASS_NAME, 'section-directions-options-route-options-header'))
                     EC.presence_of_element_located((By.CLASS_NAME, 'section-directions-trip-title'))
                 )
-                print("waited.")
             except TimeoutException:
-                print("Can not wait!!")
                 pass
 
 
-            # 検索ルートを取得してリストに加える
+            # 検索ルートを取得してリストに加える -------------------------------------------------------
             list_route = driver.find_elements_by_class_name('section-directions-trip-description')
 
+            # ルートの概要
             route_list = []
             for ls in list_route:
                 route_list.append(ls.text.replace("\n", " "))
-                print("Routes is found ... ")
+                print("Gross Routes is found ... ")
 
-            # get screen shot
+            # ルートの詳細を取得 --------------------------------------------------------------------
+            driver.find_element_by_class_name("section-directions-trip-details-link").click()
+            list_detail_route = driver.find_element_by_class_name('section-trip-details')
+            detail_route = list_detail_route.text.replace("\n", " ")
+
+            # get screen shot -------------------------------------------------------------------
             driver.save_screenshot(FILENAME)
-            print("Bus route is found.\nscreenshot is saved.")
-        #
+            print("Detail Route is found.")
+            print("screenshot is saved.")
+
+
         except NoSuchElementException:
             driver.save_screenshot(FILENAME)
-            print("Screenshot is saved.\n")
+            print("Element is not shown Screenshot is saved.")
             # print("There are no bus route.")
 
             # ルートのリスト空白を代入
@@ -138,11 +142,11 @@ for from_to_list in df_from_to.iterrows():
             route_list.append("")
             route_list.append("")
 
-        print("adjusting list size")
+        print("adjusting list size...")
         if len(route_list) <= 3:
             while len(route_list) != 3:
                 route_list.append("")
-        new_contents = pd.Series([data.ObjectID, START_POINT, END_POINT, START_TIME, route_list[0], route_list[1], route_list[2]],
+        new_contents = pd.Series([data.ObjectID, START_POINT, END_POINT, START_TIME, detail_route ,route_list[0], route_list[1], route_list[2]],
                                  index=returned_dataset.columns,
                                  name = None)
 
